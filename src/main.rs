@@ -1,6 +1,5 @@
 use std::io::Cursor;
 
-
 #[macro_use]
 extern crate glium;
 use glium::Surface;
