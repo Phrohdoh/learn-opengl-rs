@@ -1,0 +1,8 @@
+[package]
+name = "learn-opengl-rs"
+version = "0.1.0"
+authors = ["Taryn Hill <taryn@phrohdoh.com>"]
+
+[dependencies]
+glium = "0.16.0"
+image = "^0.12"
