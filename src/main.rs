@@ -9,6 +9,7 @@ fn main() {
     let display = glium::glutin::WindowBuilder::new()
         .with_title(String::from("LearnOpenGL"))
         .with_dimensions(600, 600)
+        .with_depth_buffer(24)
         .build_glium()
         .expect("Failed to build glium window");
 
@@ -47,16 +48,25 @@ fn main() {
 
     let positions = glium::VertexBuffer::new(&display, &teapot::VERTICES).unwrap();
     let normals = glium::VertexBuffer::new(&display, &teapot::NORMALS).unwrap();
-    let indices = glium::IndexBuffer::new(&display, glium::index::PrimitiveType::TrianglesList, &teapot::INDICES).unwrap();
-    let program = glium::Program::from_source(&display, vs, fs, None).expect("Failed to link program");
+    let indices = glium::IndexBuffer::new(&display,
+                                          glium::index::PrimitiveType::TrianglesList,
+                                          &teapot::INDICES)
+        .unwrap();
+    let program = glium::Program::from_source(&display, vs, fs, None)
+        .expect("Failed to link program");
+
+    let params = glium::DrawParameters {
+        depth: glium::Depth {
+            test: glium::DepthTest::IfLess,
+            write: true,
+            ..Default::default()
+        },
+        ..Default::default()
+    };
 
     let light = [-1.0, 0.4, 0.8f32];
 
-    loop {
-        let mut target = display.draw();
-        target.clear_color(0.0, 0.0, 1.0, 1.0);
-
-        let uniforms = uniform! {
+    let uniforms = uniform! {
             matrix: [
                 [0.01, 0.0, 0.0, 0.0],
                 [0.0, 0.01, 0.0, 0.0],
@@ -66,7 +76,15 @@ fn main() {
             u_light: light,
         };
 
-        target.draw((&positions, &normals), &indices, &program, &uniforms, &Default::default())
+    loop {
+        let mut target = display.draw();
+        target.clear_color_and_depth((0.0, 0.0, 1.0, 1.0), 1.0);
+
+        target.draw((&positions, &normals),
+                  &indices,
+                  &program,
+                  &uniforms,
+                  &params)
             .expect("Failed to draw");
 
         target.finish().expect("Failed to clear target");
