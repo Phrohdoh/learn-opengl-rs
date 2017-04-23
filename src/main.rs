@@ -62,6 +62,9 @@ fn main() {
             write: true,
             ..Default::default()
         },
+        // NOTE: Intentionally disabled because the teapot isn't a closed model.
+        //       Left here so I don't forget about this.
+        // backface_culling: glium::BackfaceCullingMode::CullClockwise,
         ..Default::default()
     };
 
