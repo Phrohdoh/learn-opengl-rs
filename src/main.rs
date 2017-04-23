@@ -21,12 +21,13 @@ fn main() {
 
         out vec3 v_normal;
 
+        uniform mat4 perspective;
         uniform mat4 matrix;
 
         // Called once for each vertex in our geometry
         void main() {
             v_normal = transpose(inverse(mat3(matrix))) * normal;
-            gl_Position = matrix * vec4(position, 1.0);
+            gl_Position = perspective * matrix * vec4(position, 1.0);
         }
     "#;
 
@@ -50,8 +51,8 @@ fn main() {
     let normals = glium::VertexBuffer::new(&display, &teapot::NORMALS).unwrap();
     let indices = glium::IndexBuffer::new(&display,
                                           glium::index::PrimitiveType::TrianglesList,
-                                          &teapot::INDICES)
-        .unwrap();
+                                          &teapot::INDICES).unwrap();
+
     let program = glium::Program::from_source(&display, vs, fs, None)
         .expect("Failed to link program");
 
@@ -64,26 +65,45 @@ fn main() {
         ..Default::default()
     };
 
-    let light = [-1.0, 0.4, 0.8f32];
+    let matrix = [
+        [0.01, 0.0, 0.0, 0.0],
+        [0.0, 0.01, 0.0, 0.0],
+        [0.0, 0.0, 0.01, 0.0],
+        [0.0, 0.0, 2.0, 1.0f32]
+    ];
 
-    let uniforms = uniform! {
-            matrix: [
-                [0.01, 0.0, 0.0, 0.0],
-                [0.0, 0.01, 0.0, 0.0],
-                [0.0, 0.0, 0.01, 0.0],
-                [0.0, 0.0, 0.0, 1.0f32]
-            ],
-            u_light: light,
-        };
+    let light = [-1.0, 0.4, 0.8f32];
 
     loop {
         let mut target = display.draw();
         target.clear_color_and_depth((0.0, 0.0, 1.0, 1.0), 1.0);
 
+        let perspective = {
+            let (width, height) = target.get_dimensions();
+            let aspect_ratio = height as f32 / width as f32;
+
+            let fov: f32 = 3.141592 / 3.0;
+            let zfar = 1024.0;
+            let znear = 0.1;
+
+            let f = 1.0 / (fov / 2.0).tan();
+
+            [
+                [f * aspect_ratio, 0.0,              0.0              , 0.0],
+                [       0.0      ,  f ,              0.0              , 0.0],
+                [       0.0      , 0.0,  (zfar+znear)/(zfar-znear)    , 1.0],
+                [       0.0      , 0.0, -(2.0*zfar*znear)/(zfar-znear), 0.0],
+            ]
+        };
+
         target.draw((&positions, &normals),
                   &indices,
                   &program,
-                  &uniforms,
+                  &uniform! {
+                    matrix: matrix,
+                    u_light: light,
+                    perspective: perspective,
+                  },
                   &params)
             .expect("Failed to draw");
 
