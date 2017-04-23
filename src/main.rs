@@ -1,98 +1,61 @@
-use std::io::Cursor;
-
 #[macro_use]
 extern crate glium;
 use glium::Surface;
 
-extern crate image;
-
-#[derive(Copy, Clone)]
-struct Vertex {
-    position: [f32; 2],
-    tex: [f32; 2],
-}
-
-implement_vertex!(Vertex, position, tex);
+mod teapot;
 
 fn main() {
     use glium::DisplayBuild;
     let display = glium::glutin::WindowBuilder::new()
         .with_title(String::from("LearnOpenGL"))
+        .with_dimensions(600, 600)
         .build_glium()
         .expect("Failed to build glium window");
 
-    let vertex_shader_src = r#"
+    let vs = r#"
         #version 140
 
-        in vec2 position;
-        in vec2 tex;
-        out vec2 v_tex;
+        in vec3 position;
+        in vec3 normal;
 
         uniform mat4 matrix;
 
         // Called once for each vertex in our geometry
         void main() {
-            v_tex = tex;
-            gl_Position = matrix * vec4(position, 0.0, 1.0);
+            gl_Position = matrix * vec4(position, 1.0);
         }
     "#;
 
-    let fragment_shader_src = r#"
+    let fs = r#"
         #version 140
 
-        in vec2 v_tex;
         out vec4 color;
-
-        uniform sampler2D tex;
 
         // Called once per pixel
         void main() {
-            color = texture(tex, v_tex);
+            color = vec4(1.0, 0.0, 0.0, 1.0);
         }
     "#;
 
-    let bl = Vertex { position: [-0.5, -0.5], tex: [0.0, 0.0], };
-    let top = Vertex { position: [0.0, 0.5], tex: [0.0, 1.0], };
-    let br = Vertex { position: [0.5, -0.5], tex: [1.0, 0.0], };
-    let shape = vec![bl, top, br];
-
-    let vbo = glium::VertexBuffer::new(&display, &shape).expect("Failed to create vbo");
-    let indices = glium::index::NoIndices(glium::index::PrimitiveType::TrianglesList);
-    let program =
-        glium::Program::from_source(&display, vertex_shader_src, fragment_shader_src, None)
-            .expect("Failed to link program");
-
-    let image = image::load(Cursor::new(&include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"), "/tree.png"))[..]), image::PNG)
-        .expect("Failed to read png")
-        .to_rgba();
-
-    let dims = image.dimensions();
-    let raw_image = glium::texture::RawImage2d::from_raw_rgba_reversed(image.into_raw(), dims);
-    let tex = glium::texture::Texture2d::new(&display, raw_image).expect("Failed to create texture");
-
-    let mut t: f32 = -0.5;
+    let positions = glium::VertexBuffer::new(&display, &teapot::VERTICES).unwrap();
+    let normals = glium::VertexBuffer::new(&display, &teapot::NORMALS).unwrap();
+    let indices = glium::IndexBuffer::new(&display, glium::index::PrimitiveType::TrianglesList, &teapot::INDICES).unwrap();
+    let program = glium::Program::from_source(&display, vs, fs, None).expect("Failed to link program");
 
     loop {
-        t += 0.0002;
-
-        if t > 0.5 {
-            t = -0.5;
-        }
-
-        let uniforms = uniform! {
-            matrix: [
-                [1.0, 0.0, 0.0, 0.0],
-                [0.0, 1.0, 0.0, 0.0],
-                [0.0, 0.0, 1.0, 0.0],
-                [ t , 0.0, 0.0, 1.0f32],
-            ],
-            tex: &tex
-        };
-
         let mut target = display.draw();
         target.clear_color(0.0, 0.0, 1.0, 1.0);
 
-        target.draw(&vbo, &indices, &program, &uniforms, &Default::default())
+        let uniforms = uniform! {
+            matrix: [
+                [0.01, 0.0, 0.0, 0.0],
+                [0.0, 0.01, 0.0, 0.0],
+                [0.0, 0.0, 0.01, 0.0],
+                [0.0, 0.0, 0.0, 1.0f32]
+            ],
+        };
+
+        target.draw((&positions, &normals), &indices, &program, &uniforms, &Default::default())
             .expect("Failed to draw");
 
         target.finish().expect("Failed to clear target");
